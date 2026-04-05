@@ -1,20 +1,28 @@
 package com.magdalena.rezervacije.model;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDate;
 
-@Table("rezervacije")
+@Table("rezervacije")  // ime tabele v bazi
 public class Rezervacija {
 
     @Id
+    @Column("r_id")
     private Long rId;
 
+    @Column("datum_rezervacije")
     private LocalDate datumRezervacije;
-    private Long uId;
-    private Long sdId;
 
+    @Column("u_id")
+    private Long uId;   // uporabniški ID
+
+    @Column("sd_id")
+    private Long sdId;  // športna dvorana ID
+
+    // -------- Getters & Setters --------
     public Long getRId() {
         return rId;
     }
@@ -31,11 +39,11 @@ public class Rezervacija {
         this.datumRezervacije = datumRezervacije;
     }
 
-    public Long getUId() {
+    public Long getuId() {
         return uId;
     }
 
-    public void setUId(Long uId) {
+    public void setuId(Long uId) {
         this.uId = uId;
     }
 
