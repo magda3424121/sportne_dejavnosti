@@ -6,7 +6,7 @@ import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDate;
 
-@Table("rezervacije")  // ime tabele v bazi
+@Table("rezervacije")
 public class Rezervacija {
 
     @Id
@@ -17,12 +17,13 @@ public class Rezervacija {
     private LocalDate datumRezervacije;
 
     @Column("u_id")
-    private Long uId;   // uporabniški ID
+    private Long uId; // ID uporabnika
 
     @Column("sd_id")
-    private Long sdId;  // športna dvorana ID
+    private Long sdId; // ID dvorane
 
-    // -------- Getters & Setters --------
+    // --- Getters in Setters ---
+
     public Long getRId() {
         return rId;
     }
@@ -39,11 +40,11 @@ public class Rezervacija {
         this.datumRezervacije = datumRezervacije;
     }
 
-    public Long getuId() {
+    public Long getUId() {
         return uId;
     }
 
-    public void setuId(Long uId) {
+    public void setUId(Long uId) {
         this.uId = uId;
     }
 
@@ -54,4 +55,5 @@ public class Rezervacija {
     public void setSdId(Long sdId) {
         this.sdId = sdId;
     }
+
 }
