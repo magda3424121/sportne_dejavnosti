@@ -31,39 +31,47 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest req) {
-        if (req == null || req.email == null || req.geslo == null) {
-            return ResponseEntity.badRequest().body("Manjka email ali geslo.");
-        }
-
-        return uporabnikRepository.findByEmail(req.email)
-                .map(u -> {
-                    if (!req.geslo.equals(u.getGeslo())) {
-                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Napačno geslo.");
-                    }
-                    return ResponseEntity.ok(u);
-                })
-                .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Uporabnik ne obstaja."));
+public ResponseEntity<?> login(@RequestBody LoginRequest req) {
+    if (req == null || req.email == null || req.geslo == null) {
+        return ResponseEntity.badRequest().body("Manjka email ali geslo.");
     }
 
+    return uporabnikRepository.findByEmail(req.email)
+            .map(u -> {
+                // Preveri, da tukaj uporabljaš getGeslo() brez podčrtaja, če si ga v modelu spremenila
+                if (!req.geslo.equals(u.getGeslo())) {
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Napačno geslo.");
+                }
+                return ResponseEntity.ok(u);
+            })
+            .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Uporabnik ne obstaja."));
+}
+
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
-        if (req == null || req.email == null || req.geslo == null || req.ime == null) {
-            return ResponseEntity.badRequest().body("Manjkajo obvezna polja (ime, email, geslo).");
-        }
+public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
+    System.out.println("Prejeta registracija za: " + req.email); // To boš videla v terminalu
 
-        if (uporabnikRepository.existsByEmail(req.email)) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email je že v uporabi.");
-        }
+    if (uporabnikRepository.existsByEmail(req.email)) {
+        System.out.println("Napaka: Email že obstaja.");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body("Email je že v uporabi.");
+    }
 
+    try {
         Uporabnik u = new Uporabnik();
         u.setIme(req.ime);
         u.setPriimek(req.priimek);
         u.setEmail(req.email);
         u.setGeslo(req.geslo);
         u.setTelefon(req.telefon);
-        u.setVrsta_uporabnika(req.vrsta_uporabnika != null ? req.vrsta_uporabnika : "stranka");
+        u.setVrstaUporabnika(req.vrsta_uporabnika != null ? req.vrsta_uporabnika : "uporabnik");
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(uporabnikRepository.save(u));
+        Uporabnik shranjen = uporabnikRepository.save(u);
+        System.out.println("Uporabnik uspešno shranjen z ID: " + shranjen.getUid());
+        return ResponseEntity.status(HttpStatus.CREATED).body(shranjen);
+    } catch (Exception e) {
+        System.out.println("NAPAKA PRI SHRANJEVANJU: " + e.getMessage());
+        e.printStackTrace(); // Izpiše celo napako v rdečem
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Napaka na strežniku.");
     }
+}
 }
