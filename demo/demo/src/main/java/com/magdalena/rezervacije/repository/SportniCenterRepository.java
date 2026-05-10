@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface SportniCenterRepository extends CrudRepository<SportniCenter, Long> {
 
-    // ime metode mora sovpadati z imenom polja v modelu: kId
+  
     List<SportniCenter> findBykId(Long kId);
 
     List<SportniCenter> findByImeContainingIgnoreCase(String ime);

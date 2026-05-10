@@ -50,7 +50,7 @@ public class RezervacijaController {
         return repo.findById(id)
                 .map(stari -> {
                     stari.setDatumRezervacije(novi.getDatumRezervacije());
-                    stari.setuId(novi.getuId());   // popravljen getter/setter
+                    stari.setUId(novi.getUId());   // popravljen getter/setter
                     stari.setSdId(novi.getSdId());
                     return ResponseEntity.ok(repo.save(stari));
                 })
