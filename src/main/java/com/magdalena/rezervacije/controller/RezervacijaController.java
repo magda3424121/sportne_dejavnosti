@@ -11,16 +11,13 @@ import java.time.LocalDate;
 @RequestMapping("/rezervacije")
 public class RezervacijaController {
 
+    // Uporabljamo ime 'repo', kot si ga definirala zgoraj
     private final RezervacijaRepository repo;
 
     public RezervacijaController(RezervacijaRepository repo) {
         this.repo = repo;
     }
 
-    // GET /rezervacije
-    // GET /rezervacije?uId=...
-    // GET /rezervacije?sdId=...
-    // GET /rezervacije?datum=2026-02-24
     @GetMapping
     public Iterable<Rezervacija> vse(
             @RequestParam(required = false) Long uId,
@@ -50,17 +47,21 @@ public class RezervacijaController {
         return repo.findById(id)
                 .map(stari -> {
                     stari.setDatumRezervacije(novi.getDatumRezervacije());
-                    stari.setUId(novi.getUId());   // popravljen getter/setter
+                    stari.setUId(novi.getUId());
                     stari.setSdId(novi.getSdId());
                     return ResponseEntity.ok(repo.save(stari));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // ENA metoda za brisanje/preklic (odstranil sem dvojnik)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> brisi(@PathVariable Long id) {
-        if (!repo.existsById(id)) return ResponseEntity.notFound().build();
-        repo.deleteById(id);
-        return ResponseEntity.noContent().build();
+        if (repo.existsById(id)) {
+            repo.deleteById(id);
+            return ResponseEntity.noContent().build();
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

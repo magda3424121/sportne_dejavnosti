@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin - Upravljanje</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-dark bg-danger mb-4">
+        <div class="container">
+            <span class="navbar-brand fw-bold">ADMIN PANEL</span>
+            <a href="index.html" class="btn btn-outline-light btn-sm">Izhod</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="d-flex justify-content-between mb-3">
+            <h3>Športne dvorane</h3>
+            <button class="btn btn-success" onclick="odpriModal()">+ Dodaj dvorano</button>
+        </div>
+        
+        <div class="card shadow-sm p-3">
+            <table class="table table-hover">
+                <thead>
+                    <tr><th>Ime</th><th>Center & Kraj</th><th>Športi</th><th>Kapaciteta</th><th>Akcije</th></tr>
+                </thead>
+                <tbody id="tabela-dvoran"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal fade" id="dvoranaModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="dvoranaForm">
+                    <div class="modal-header"><h5>Dvorana</h5></div>
+                    <div class="modal-body">
+                        <input type="hidden" id="edit-id">
+                        <div class="mb-3"><label>Ime</label><input type="text" id="edit-ime" class="form-control" required></div>
+                        <div class="mb-3"><label>Kapaciteta</label><input type="number" id="edit-kapaciteta" class="form-control" required></div>
+                        <div class="mb-3"><label>Športni center</label><select id="edit-scId" class="form-select" required></select></div>
+                        <div class="mb-3">
+                            <label>Športi (obkljukaj)</label>
+                            <div id="sporti-list" class="border p-2 bg-white" style="max-height: 100px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer"><button type="button" class="btn btn-primary w-100" onclick="shrani()">Shrani</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let modal;
+        let vseDvorane = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const u = JSON.parse(localStorage.getItem('prijavljenUporabnik'));
+            if (!u || u.vrsta_uporabnika !== 'admin') { 
+                alert("Nimate dovoljenja!"); window.location.href = "index.html"; return; 
+            }
+            modal = new bootstrap.Modal(document.getElementById('dvoranaModal'));
+            osvezi();
+        });
+
+        async function osvezi() {
+            const [resD, resC, resS] = await Promise.all([
+                fetch('/sportne-dvorane'), fetch('/sportni-centri'), fetch('/sportne-dvorane/sporti')
+            ]);
+            vseDvorane = await resD.json();
+            const centri = await resC.json();
+            const sporti = await resS.json();
+
+            document.getElementById('tabela-dvoran').innerHTML = vseDvorane.map(d => `
+                <tr>
+                    <td class="fw-bold"><a href="podrobnosti.html" onclick='localStorage.setItem("izbranaDvorana", JSON.stringify(${JSON.stringify(d)}))'>${d.ime}</a></td>
+                    <td>${d.imeCentra || '-'} (${d.imeKraja || ''})</td>
+                    <td><span class="badge bg-info text-dark">${d.sportiSeznam || 'Ni športov'}</span></td>
+                    <td>${d.kapaciteta}</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick='uredi(${JSON.stringify(d)})'>Uredi</button>
+                        <button class="btn btn-sm btn-danger" onclick="izbrisi(${d.sdId})">Briši</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            document.getElementById('edit-scId').innerHTML = centri.map(c => `<option value="${c.scId}">${c.ime}</option>`).join('');
+            document.getElementById('sporti-list').innerHTML = sporti.map(s => `
+                <div class="form-check">
+                    <input class="form-check-input sport-check" type="checkbox" value="${s.sid}" id="s${s.sid}">
+                    <label class="form-check-label">${s.ime}</label>
+                </div>
+            `).join('');
+        }
+
+        function odpriModal() { document.getElementById('dvoranaForm').reset(); document.getElementById('edit-id').value=""; modal.show(); }
+        
+        function uredi(d) {
+            document.getElementById('edit-id').value = d.sdId;
+            document.getElementById('edit-ime').value = d.ime;
+            document.getElementById('edit-kapaciteta').value = d.kapaciteta;
+            document.getElementById('edit-scId').value = d.scId;
+            modal.show();
+        }
+
+        async function shrani() {
+            const id = document.getElementById('edit-id').value;
+            const ids = Array.from(document.querySelectorAll('.sport-check:checked')).map(c => parseInt(c.value));
+            const data = {
+                ime: document.getElementById('edit-ime').value,
+                kapaciteta: parseInt(document.getElementById('edit-kapaciteta').value),
+                scId: parseInt(document.getElementById('edit-scId').value),
+                sportiIds: ids
+            };
+            await fetch(id ? `/sportne-dvorane/${id}` : '/sportne-dvorane', {
+                method: id ? 'PUT' : 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            modal.hide(); osvezi();
+        }
+
+        async function izbrisi(id) {
+            if (confirm("Izbrišem dvorano?")) {
+                await fetch(`/sportne-dvorane/${id}`, { method: 'DELETE' });
+                osvezi();
+            }
+        }
+    </script>
+</body>
+</html>
