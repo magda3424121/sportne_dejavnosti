@@ -32,7 +32,6 @@
         .info-label { color: #6c757d; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
         .info-value { color: #212529; font-weight: 600; margin-bottom: 15px; }
         
-        /* Stil za dogodke na koledarju */
         .fc-event { cursor: pointer; border: none !important; }
         .my-reservation { background-color: #0d6efd !important; opacity: 0.9; }
         .other-reservation { background-color: #ff4d4d !important; cursor: not-allowed; }
@@ -113,91 +112,110 @@
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 
 <script>
-    const dvorana = JSON.parse(localStorage.getItem('izbranaDvorana'));
+    // Uporabljamo let, ker bomo dvorano posodobili s podatki iz baze
+    let dvorana = JSON.parse(localStorage.getItem('izbranaDvorana'));
     const uporabnik = JSON.parse(localStorage.getItem('prijavljenUporabnik'));
     let selectedDate = null;
     const modal = new bootstrap.Modal(document.getElementById('rezervacijaModal'));
     let calendar;
 
-    window.onload = function() {
-        if (!dvorana) {
+    window.onload = async function() {
+        if (!dvorana || !dvorana.sdId) {
             window.location.href = "index.html";
             return;
         }
 
-        document.getElementById('naslov-dvorane').innerText = dvorana.ime;
-        document.getElementById('pod-ime-centra').innerText = dvorana.imeCentra || "Neznan športni center";
-        document.getElementById('pod-naslov-centra').innerText = dvorana.naslovCentra || "Naslov ni zabeležen";
-        document.getElementById('pod-kontakt-centra').innerText = dvorana.kontaktCentra || "Ni kontakta";
-        document.getElementById('pod-kapaciteta').innerText = dvorana.kapaciteta + " oseb";
+        // Osnovni prikaz iz localStorage takoj ob nalaganju
+        document.getElementById('naslov-dvorane').innerText = dvorana.ime || "Dvorana";
         document.getElementById('pod-sdid').innerText = "#" + dvorana.sdId;
 
+        // Pridobivanje podrobnih podatkov preko JdbcTemplate v ozadju
+        try {
+            const res = await fetch(`/sportne-dvorane/${dvorana.sdId}`);
+            if (res.ok) {
+                const podrobno = await res.json();
+                console.log("Podatki iz baze:", podrobno);
+
+                // Posodobimo UI
+                document.getElementById('pod-ime-centra').innerText = podrobno.imeCentra || "Neznan športni center";
+                document.getElementById('pod-naslov-centra').innerText = podrobno.naslovCentra || "Naslov ni zabeležen";
+                document.getElementById('pod-kontakt-centra').innerText = podrobno.kontaktCentra || "Ni kontakta";
+                document.getElementById('pod-kapaciteta').innerText = (podrobno.kapaciteta || 0) + " oseb";
+                
+                // Ključno: posodobimo objekt dvorana, da ima vse podatke za koledar in rezervacije
+                dvorana = podrobno;
+            }
+        } catch (err) {
+            console.error("Napaka pri osveževanju podatkov:", err);
+            document.getElementById('pod-ime-centra').innerText = "Napaka pri nalaganju centra";
+        }
+
+        // Ko so podatki pripravljeni (ali vsaj dvorana.sdId obstaja), zaženemo koledar
         inicializirajKoledar();
     };
 
     async function inicializirajKoledar() {
-        const res = await fetch(`/rezervacije?sdId=${dvorana.sdId}`);
-        const rezervacije = await res.json();
-        
-        // Pripravimo dogodke
-        const events = rezervacije.map(r => {
-            const jeMoja = uporabnik && r.uid === uporabnik.uid;
-            return {
-                id: r.rid, // ID rezervacije iz baze
-                start: r.datumRezervacije,
-                title: jeMoja ? 'Tvoja rezervacija' : 'Zasedeno',
-                className: jeMoja ? 'my-reservation' : 'other-reservation',
-                extendedProps: { uid: r.uid }
-            };
-        });
-
-        const calendarEl = document.getElementById('calendar');
-        calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            locale: 'sl',
-            headerToolbar: {
-                left: 'prev,next today',
-                center: 'title',
-                right: 'dayGridMonth'
-            },
-            events: events,
+        try {
+            const res = await fetch(`/rezervacije?sdId=${dvorana.sdId}`);
+            const rezervacije = await res.json();
             
-            // Klik na prazen datum (Nova rezervacija)
-            dateClick: function(info) {
-                const zasedeno = events.some(e => e.start === info.dateStr);
-                if (zasedeno) return; // Če je zasedeno, dateClick ne naredi nič (uporabimo eventClick)
+            const events = rezervacije.map(r => {
+                const jeMoja = uporabnik && r.uid === uporabnik.uid;
+                return {
+                    id: r.rid,
+                    start: r.datumRezervacije,
+                    title: jeMoja ? 'Tvoja rezervacija' : 'Zasedeno',
+                    className: jeMoja ? 'my-reservation' : 'other-reservation',
+                    extendedProps: { uid: r.uid }
+                };
+            });
 
-                selectedDate = info.dateStr;
-                document.getElementById('modal-info').innerText = new Date(info.dateStr).toLocaleDateString('sl-SI');
-                modal.show();
-            },
+            const calendarEl = document.getElementById('calendar');
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'sl',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth'
+                },
+                events: events,
+                dateClick: function(info) {
+                    const zasedeno = events.some(e => e.start === info.dateStr);
+                    if (zasedeno) return;
 
-            // Klik na obstoječ dogodek (Preklic)
-            eventClick: async function(info) {
-                const rId = info.event.id;
-                const rUid = info.event.extendedProps.uid;
+                    selectedDate = info.dateStr;
+                    document.getElementById('modal-info').innerText = new Date(info.dateStr).toLocaleDateString('sl-SI');
+                    modal.show();
+                },
+                eventClick: async function(info) {
+                    const rId = info.event.id;
+                    const rUid = info.event.extendedProps.uid;
 
-                if (!uporabnik) {
-                    alert("Prijavi se za upravljanje rezervacij.");
-                    return;
-                }
-
-                if (uporabnik.uid === rUid || uporabnik.vrsta_uporabnika === 'admin') {
-                    if (confirm("Želite preklicati to rezervacijo?")) {
-                        const delRes = await fetch(`/rezervacije/${rId}`, { method: 'DELETE' });
-                        if (delRes.ok) {
-                            alert("Rezervacija preklicana.");
-                            location.reload();
-                        } else {
-                            alert("Napaka pri brisanju.");
-                        }
+                    if (!uporabnik) {
+                        alert("Prijavi se za upravljanje rezervacij.");
+                        return;
                     }
-                } else {
-                    alert("Tuje rezervacije ne morete preklicati.");
+
+                    if (uporabnik.uid === rUid || uporabnik.vrsta_uporabnika === 'admin') {
+                        if (confirm("Želite preklicati to rezervacijo?")) {
+                            const delRes = await fetch(`/rezervacije/${rId}`, { method: 'DELETE' });
+                            if (delRes.ok) {
+                                alert("Rezervacija preklicana.");
+                                location.reload();
+                            } else {
+                                alert("Napaka pri brisanju.");
+                            }
+                        }
+                    } else {
+                        alert("Tuje rezervacije ne morete preklicati.");
+                    }
                 }
-            }
-        });
-        calendar.render();
+            });
+            calendar.render();
+        } catch (error) {
+            console.error("Napaka pri nalaganju koledarja:", error);
+        }
     }
 
     async function potrdiRezervacijo() {
@@ -222,7 +240,7 @@
             modal.hide();
             location.reload();
         } else {
-            alert("Termin je verjetno ravnokar nekdo zasedel.");
+            alert("Napaka pri rezervaciji. Poskusite znova.");
         }
     }
 </script>
