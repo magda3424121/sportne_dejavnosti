@@ -2,131 +2,201 @@
 <html lang="sl">
 <head>
     <meta charset="UTF-8">
-    <title>Admin - Upravljanje</title>
+    <title>Admin - Upravljanje dvoran</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .navbar-admin { background-color: #dc3545; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .table-container { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .badge-sport { font-size: 0.8rem; margin-right: 4px; }
+    </style>
 </head>
 <body class="bg-light">
-    <nav class="navbar navbar-dark bg-danger mb-4">
-        <div class="container">
-            <span class="navbar-brand fw-bold">ADMIN PANEL</span>
-            <a href="index.html" class="btn btn-outline-light btn-sm">Izhod</a>
-        </div>
-    </nav>
 
+<nav class="navbar navbar-dark navbar-admin mb-4">
     <div class="container">
-        <div class="d-flex justify-content-between mb-3">
-            <h3>Športne dvorane</h3>
-            <button class="btn btn-success" onclick="odpriModal()">+ Dodaj dvorano</button>
-        </div>
+        <span class="navbar-brand fw-bold">ADMIN PANEL</span>
+        <a href="admin-centri.html" class="btn btn-outline-light btn-sm rounded-pill px-3">Športni centri</a>
+        <a href="admin-rezervacije.html" class="btn btn-outline-light btn-sm rounded-pill px-3">Rezervacije</a>
+        <a href="index.html" class="btn btn-outline-light btn-sm rounded-pill px-3">Nazaj na stran</a>
         
-        <div class="card shadow-sm p-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr><th>Ime</th><th>Center & Kraj</th><th>Športi</th><th>Kapaciteta</th><th>Akcije</th></tr>
-                </thead>
-                <tbody id="tabela-dvoran"></tbody>
-            </table>
-        </div>
+        
+       
     </div>
+</nav>
 
-    <div class="modal fade" id="dvoranaModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form id="dvoranaForm">
-                    <div class="modal-header"><h5>Dvorana</h5></div>
-                    <div class="modal-body">
-                        <input type="hidden" id="edit-id">
-                        <div class="mb-3"><label>Ime</label><input type="text" id="edit-ime" class="form-control" required></div>
-                        <div class="mb-3"><label>Kapaciteta</label><input type="number" id="edit-kapaciteta" class="form-control" required></div>
-                        <div class="mb-3"><label>Športni center</label><select id="edit-scId" class="form-select" required></select></div>
-                        <div class="mb-3">
-                            <label>Športi (obkljukaj)</label>
-                            <div id="sporti-list" class="border p-2 bg-white" style="max-height: 100px; overflow-y: auto;"></div>
-                        </div>
-                    </div>
-                    <div class="modal-footer"><button type="button" class="btn btn-primary w-100" onclick="shrani()">Shrani</button></div>
-                </form>
-            </div>
-        </div>
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold m-0">Upravljanje športnih dvoran</h3>
+        <button class="btn btn-success rounded-pill px-4" onclick="odpriModal()">+ Dodaj dvorano</button>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        let modal;
-        let vseDvorane = [];
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const u = JSON.parse(localStorage.getItem('prijavljenUporabnik'));
-            if (!u || u.vrsta_uporabnika !== 'admin') { 
-                alert("Nimate dovoljenja!"); window.location.href = "index.html"; return; 
-            }
-            modal = new bootstrap.Modal(document.getElementById('dvoranaModal'));
-            osvezi();
-        });
-
-        async function osvezi() {
-            const [resD, resC, resS] = await Promise.all([
-                fetch('/sportne-dvorane'), fetch('/sportni-centri'), fetch('/sportne-dvorane/sporti')
-            ]);
-            vseDvorane = await resD.json();
-            const centri = await resC.json();
-            const sporti = await resS.json();
-
-            document.getElementById('tabela-dvoran').innerHTML = vseDvorane.map(d => `
+    
+    <div class="table-container">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
                 <tr>
-                    <td class="fw-bold"><a href="podrobnosti.html" onclick='localStorage.setItem("izbranaDvorana", JSON.stringify(${JSON.stringify(d)}))'>${d.ime}</a></td>
-                    <td>${d.imeCentra || '-'} (${d.imeKraja || ''})</td>
-                    <td><span class="badge bg-info text-dark">${d.sportiSeznam || 'Ni športov'}</span></td>
+                    <th>Ime</th>
+                    <th>Športni center</th>
+                    <th>Športi</th>
+                    <th>Kapaciteta</th>
+                    <th class="text-center">Akcije</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-dvoran"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="dvoranaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <form id="dvoranaForm">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title" id="modalTitle">Nova dvorana</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Ime dvorane</label>
+                        <input type="text" id="edit-ime" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Kapaciteta</label>
+                        <input type="number" id="edit-kapaciteta" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Športni center</label>
+                        <select id="edit-scId" class="form-select" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Športi (npr. Tenis, Nogomet)</label>
+                        <input type="text" id="edit-sporti" class="form-control" placeholder="Vpišite športe ločene z vejico">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Prekliči</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4" onclick="shrani()">Shrani spremembe</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let modal;
+    let trenutniId = null; // Hrani ID dvorane, ko urejamo
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const u = JSON.parse(localStorage.getItem('prijavljenUporabnik'));
+        const vloga = u ? (u.vrsta_uporabnika || u.vrstaUporabnika) : null;
+        
+        if (!u || vloga !== 'admin') { 
+            alert("Dostop zavrnjen! Samo za administratorje."); 
+            window.location.href = "index.html"; 
+            return; 
+        }
+
+        modal = new bootstrap.Modal(document.getElementById('dvoranaModal'));
+        osveziPodatke();
+    });
+
+    async function osveziPodatke() {
+        try {
+            const [resD, resC] = await Promise.all([
+                fetch('/sportne-dvorane'),
+                fetch('/sportni-centri')
+            ]);
+
+            const dvorane = await resD.json();
+            const centri = await resC.json();
+
+            // Polnjenje tabele
+            document.getElementById('tabela-dvoran').innerHTML = dvorane.map(d => `
+                <tr>
+                    <td class="fw-bold">${d.ime}</td>
+                    <td>${d.imeCentra || 'Center ' + d.scId}</td>
+                    <td><span class="badge bg-secondary">${d.sporti || '-'}</span></td>
                     <td>${d.kapaciteta}</td>
-                    <td>
-                        <button class="btn btn-sm btn-warning" onclick='uredi(${JSON.stringify(d)})'>Uredi</button>
-                        <button class="btn btn-sm btn-danger" onclick="izbrisi(${d.sdId})">Briši</button>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-warning me-1" onclick="uredi(${d.sdId || d.sd_id})">Uredi</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="izbrisi(${d.sdId || d.sd_id})">Izbriši</button>
                     </td>
                 </tr>
             `).join('');
 
-            document.getElementById('edit-scId').innerHTML = centri.map(c => `<option value="${c.scId}">${c.ime}</option>`).join('');
-            document.getElementById('sporti-list').innerHTML = sporti.map(s => `
-                <div class="form-check">
-                    <input class="form-check-input sport-check" type="checkbox" value="${s.sid}" id="s${s.sid}">
-                    <label class="form-check-label">${s.ime}</label>
-                </div>
-            `).join('');
+            // Polnjenje dropdowna za športne centre
+            document.getElementById('edit-scId').innerHTML = centri.map(c => 
+                `<option value="${c.scId || c.sc_id}">${c.ime}</option>`
+            ).join('');
+        } catch (napaka) {
+            console.error("Napaka pri pridobivanju podatkov:", napaka);
         }
+    }
 
-        function odpriModal() { document.getElementById('dvoranaForm').reset(); document.getElementById('edit-id').value=""; modal.show(); }
-        
-        function uredi(d) {
-            document.getElementById('edit-id').value = d.sdId;
+    function odpriModal() {
+        trenutniId = null; // Ponastavimo na null, ker gre za novo dvorano
+        document.getElementById('dvoranaForm').reset();
+        document.getElementById('modalTitle').innerText = "Nova dvorana";
+        modal.show();
+    }
+
+    async function uredi(id) {
+        trenutniId = id;
+        try {
+            const res = await fetch(`/sportne-dvorane/${id}`);
+            if (!res.ok) throw new Error("Dvorane ni mogoče najti");
+            
+            const d = await res.json();
+            
+            // Napolnimo polja v modalu
             document.getElementById('edit-ime').value = d.ime;
             document.getElementById('edit-kapaciteta').value = d.kapaciteta;
             document.getElementById('edit-scId').value = d.scId;
+            document.getElementById('edit-sporti').value = d.sporti || "";
+            
+            document.getElementById('modalTitle').innerText = "Uredi dvorano: " + d.ime;
             modal.show();
+        } catch (err) {
+            alert("Napaka pri branju podatkov dvorane.");
         }
+    }
 
-        async function shrani() {
-            const id = document.getElementById('edit-id').value;
-            const ids = Array.from(document.querySelectorAll('.sport-check:checked')).map(c => parseInt(c.value));
-            const data = {
-                ime: document.getElementById('edit-ime').value,
-                kapaciteta: parseInt(document.getElementById('edit-kapaciteta').value),
-                scId: parseInt(document.getElementById('edit-scId').value),
-                sportiIds: ids
-            };
-            await fetch(id ? `/sportne-dvorane/${id}` : '/sportne-dvorane', {
-                method: id ? 'PUT' : 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
-            modal.hide(); osvezi();
+    async function shrani() {
+        const data = {
+            ime: document.getElementById('edit-ime').value,
+            kapaciteta: parseInt(document.getElementById('edit-kapaciteta').value),
+            scId: parseInt(document.getElementById('edit-scId').value),
+            sporti: document.getElementById('edit-sporti').value
+        };
+
+        // Če imamo trenutniId, pošljemo PUT (urejanje), sicer POST (novo)
+        const url = trenutniId ? `/sportne-dvorane/${trenutniId}` : '/sportne-dvorane';
+        const metoda = trenutniId ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+            method: metoda,
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            modal.hide();
+            osveziPodatke();
+        } else {
+            alert("Napaka pri shranjevanju! Preveri, če so vsa polja pravilna.");
         }
+    }
 
-        async function izbrisi(id) {
-            if (confirm("Izbrišem dvorano?")) {
-                await fetch(`/sportne-dvorane/${id}`, { method: 'DELETE' });
-                osvezi();
+    async function izbrisi(id) {
+        if (confirm("Ali si prepričan, da želiš izbrisati dvorano?")) {
+            const res = await fetch(`/sportne-dvorane/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                osveziPodatke();
+            } else {
+                alert("Napaka pri brisanju!");
             }
         }
-    </script>
+    }
+</script>
 </body>
 </html>

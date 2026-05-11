@@ -4,6 +4,7 @@ import com.magdalena.rezervacije.model.SportniCenter;
 import com.magdalena.rezervacije.repository.SportniCenterRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/sportni-centri")
@@ -16,13 +17,8 @@ public class SportniCenterController {
     }
 
     @GetMapping
-    public Iterable<SportniCenter> vsi(
-            @RequestParam(required = false) Long kId,
-            @RequestParam(required = false) String ime
-    ) {
-        if (kId != null) return repo.findBykId(kId);
-        if (ime != null && !ime.isBlank()) return repo.findByImeContainingIgnoreCase(ime);
-        return repo.findAll();
+    public List<SportniCenter> vsi() {
+        return repo.findAllWithKraji();
     }
 
     @GetMapping("/{id}")
@@ -33,9 +29,10 @@ public class SportniCenterController {
     }
 
     @PostMapping
-    public SportniCenter dodaj(@RequestBody SportniCenter sc) {
-        return repo.save(sc);
-    }
+public SportniCenter dodaj(@RequestBody SportniCenter sc) {
+    sc.setScId(null);
+    return repo.save(sc);
+}
 
     @PutMapping("/{id}")
     public ResponseEntity<SportniCenter> posodobi(@PathVariable Long id, @RequestBody SportniCenter novi) {
@@ -44,7 +41,7 @@ public class SportniCenterController {
                     stari.setIme(novi.getIme());
                     stari.setNaslov(novi.getNaslov());
                     stari.setKontakt(novi.getKontakt());
-                    stari.setKId(novi.getKId());
+                    stari.setKid(novi.getKid());
                     return ResponseEntity.ok(repo.save(stari));
                 })
                 .orElse(ResponseEntity.notFound().build());

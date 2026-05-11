@@ -3,12 +3,11 @@ package com.magdalena.rezervacije.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
-
 import java.time.LocalDate;
+import org.springframework.data.annotation.Transient;
 
 @Table("rezervacije")
 public class Rezervacija {
-
     @Id
     @Column("r_id")
     private Long rId;
@@ -17,12 +16,24 @@ public class Rezervacija {
     private LocalDate datumRezervacije;
 
     @Column("u_id")
-    private Long uId; // ID uporabnika
+    private Long uId;
 
     @Column("sd_id")
-    private Long sdId; // ID dvorane
+    private Long sdId;
 
-    // --- Getters in Setters ---
+   
+    @Transient
+    private String imeUporabnika;
+    
+    @Transient
+    private String imeDvorane;
+
+    
+    public String getImeUporabnika() { return imeUporabnika; }
+    public void setImeUporabnika(String imeUporabnika) { this.imeUporabnika = imeUporabnika; }
+
+    public String getImeDvorane() { return imeDvorane; }
+    public void setImeDvorane(String imeDvorane) { this.imeDvorane = imeDvorane; }
 
     public Long getRId() {
         return rId;

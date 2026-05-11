@@ -4,12 +4,10 @@
     <meta charset="UTF-8">
     <title>Sistem za Rezervacije</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <style>
         .dvorana-card { cursor: pointer; transition: 0.3s; border-radius: 15px; border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         .dvorana-card:hover { transform: translateY(-5px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
-        .admin-only { display: none; }
-        #calendar-container { display: none; background: white; padding: 20px; border-radius: 15px; }
+        .bg-primary { background-color: #0d6efd !important; }
     </style>
 </head>
 <body class="bg-light">
@@ -17,8 +15,9 @@
 <nav class="navbar navbar-dark bg-primary mb-4 shadow">
     <div class="container">
         <span class="navbar-brand mb-0 h1">Športni Rezervacijski Sistem</span>
-        <div id="user-info">
-            <span id="ime-prijavljenega" class="text-white me-3"></span>
+        <div id="user-info" class="d-flex align-items-center">
+            <span id="ime-prijavljenega" class="text-white me-3 fw-bold"></span>
+            <a href="admin.html" id="admin-button" class="btn btn-warning btn-sm me-2 d-none">Admin Panel</a>
             <button class="btn btn-outline-light btn-sm" onclick="odjava()">Odjava</button>
         </div>
     </div>
@@ -26,65 +25,37 @@
 
 <div class="container">
     <div id="main-content">
-        <div class="row mb-4">
+        <div class="row mb-4 align-items-center">
             <div class="col">
-                <h2>Izberite dvorano</h2>
-            </div>
-            <div class="col text-end">
-                <button class="btn btn-danger admin-only">Uredi Dvorane (Admin)</button>
+                <h2 class="fw-bold">Izberite dvorano</h2>
+                <p class="text-muted">Kliknite na dvorano za ogled zasedenosti in rezervacijo.</p>
             </div>
         </div>
         
-        <div id="izbira-dvorane" class="row g-4"></div>
-
-        <div id="calendar-container" class="mt-5 shadow">
-            <div class="d-flex justify-content-between align-items-start mb-4">
-                <div>
-                    <h3 id="naslov-koledarja" class="text-primary mb-0"></h3>
-                    <div id="podrobnosti-dvorane" class="alert alert-info py-2 mt-2">
-                        Nalaganje podatkov...
-                    </div>
-                </div>
-                <button class="btn btn-secondary" onclick="window.location.reload()">Nazaj na seznam</button>
+        <div id="izbira-dvorane" class="row g-4">
             </div>
-            <div id="calendar"></div>
-        </div>
     </div>
 </div>
-
-<div class="modal fade" id="rezervacijaModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title">Potrditev</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                <p id="modal-info"></p>
-                <button class="btn btn-primary" onclick="potrdiRezervacijo()">Rezerviraj zdaj</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 
 <script>
-    let currentSdId = null;
-    let selectedDate = null;
-    const modal = new bootstrap.Modal(document.getElementById('rezervacijaModal'));
-
     window.onload = function() {
         const u = JSON.parse(localStorage.getItem('prijavljenUporabnik'));
+        
         if (!u) {
             window.location.href = "prijava.html";
             return;
         }
+
+        // Prikaz imena
         document.getElementById('ime-prijavljenega').innerText = u.ime + " " + u.priimek;
-        if (u.vrstaUporabnika === 'admin') {
-            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'inline-block');
+
+        // LOGIKA ZA ADMIN GUMB: Preverimo oba možna zapisa polja iz baze
+        const vloga = u.vrsta_uporabnika || u.vrstaUporabnika;
+        if (vloga === 'admin') {
+            const adminBtn = document.getElementById('admin-button');
+            if (adminBtn) adminBtn.classList.remove('d-none');
         }
+
         naloziDvorane();
     };
 
@@ -94,45 +65,34 @@
     }
 
     async function naloziDvorane() {
-        const res = await fetch('/sportne-dvorane');
-        const dvorane = await res.json();
-        const container = document.getElementById('izbira-dvorane');
-        
-        container.innerHTML = dvorane.map(d => `
-            <div class="col-md-4">
-                <div class="card dvorana-card h-100" onclick='prikaziKoledar(${JSON.stringify(d)})'>
-                    <div class="card-body">
-                        <h5 class="card-title text-primary">${d.ime}</h5>
-                        <p class="card-text">Kapaciteta: ${d.kapaciteta} oseb</p>
-                        <small class="text-muted">Center ID: ${d.scId}</small>
+        try {
+            const res = await fetch('/sportne-dvorane');
+            const dvorane = await res.json();
+            const container = document.getElementById('izbira-dvorane');
+            
+            container.innerHTML = dvorane.map(d => `
+                <div class="col-md-4">
+                    <div class="card dvorana-card h-100" onclick='prikaziPodrobnosti(${JSON.stringify(d)})'>
+                        <div class="card-body">
+                            <h5 class="card-title text-primary fw-bold">${d.ime}</h5>
+                            <p class="card-text mb-1"><strong>Center:</strong> ${d.imeCentra || 'Neznano'}</p>
+                            <p class="card-text mb-1"><strong>Kraj:</strong> ${d.imeKraja || '-'}</p>
+                            <p class="card-text"><strong>Kapaciteta:</strong> ${d.kapaciteta} oseb</p>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 text-end">
+                            <span class="badge bg-info text-dark">${d.sportiSeznam || 'Vsi športi'}</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `).join('');
+        } catch (error) {
+            console.error("Napaka pri nalaganju dvoran:", error);
+        }
     }
 
-    function prikaziKoledar(d) {
-    // Prepričaj se, da objekt 'd' vsebuje imeCentra, naslovCentra in kontaktCentra
-    console.log("Podatki dvorane:", d); // To preveri v konzoli (F12)
-    localStorage.setItem('izbranaDvorana', JSON.stringify(d));
-    window.location.href = "podrobnosti.html";
-}
-    async function potrdiRezervacijo() {
-        const u = JSON.parse(localStorage.getItem('prijavljenUporabnik'));
-        const r = { sdId: currentSdId, datumRezervacije: selectedDate, uid: u.uid };
-        
-        const res = await fetch('/rezervacije', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(r)
-        });
-
-        if (res.ok) {
-            alert("Rezervacija uspešna!");
-            window.location.reload();
-        } else {
-            alert("Napaka pri rezervaciji.");
-        }
+    function prikaziPodrobnosti(d) {
+        localStorage.setItem('izbranaDvorana', JSON.stringify(d));
+        window.location.href = "podrobnosti.html";
     }
 </script>
 </body>

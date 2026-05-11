@@ -7,9 +7,8 @@ import java.util.List;
 
 public interface SportnaDvoranaRepository extends CrudRepository<SportnaDvorana, Long> {
 
-    // Ta poizvedba poveže (JOIN) tabeli, da dobimo ime centra
-   @Query("SELECT d.*, c.ime AS ime_centra, c.naslov AS naslov_centra, c.kontakt AS kontakt_centra " +
+    @Query("SELECT d.*, c.ime AS ime_centra " +
        "FROM sportne_dvorane d " +
-       "LEFT JOIN sportni_centri c ON d.sc_id = c.k_id")
+       "JOIN sportni_centri c ON d.sc_id = c.sc_id")
 List<SportnaDvorana> findAllWithNames();
 }
