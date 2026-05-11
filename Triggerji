@@ -1,0 +1,58 @@
+1. preveri kapaciteto
+
+CREATE OR REPLACE FUNCTION preveri_kapaciteto()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.kapaciteta <= 0 THEN
+        NEW.kapaciteta := 1; 
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_kapaciteta_check
+BEFORE INSERT OR UPDATE ON sportne_dvorane
+FOR EACH ROW EXECUTE FUNCTION preveri_kapaciteto();
+
+2. arhiv rezervacij
+
+CREATE TABLE arhiv_rezervacij (
+    arhiv_id SERIAL PRIMARY KEY,
+    rid INT,
+    sd_id INT,
+    uid INT,
+    datum_rezervacije DATE,
+    datum_preklica TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE OR REPLACE FUNCTION arhiviraj_rezervacijo()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO arhiv_rezervacij (rid, sd_id, uid, datum_rezervacije)
+    VALUES (OLD.rid, OLD.sd_id, OLD.uid, OLD.datum_rezervacije);
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_arhiviraj_preklic
+AFTER DELETE ON rezervacije
+FOR EACH ROW EXECUTE FUNCTION arhiviraj_rezervacijo();
+
+3. preveri razpolozljivost
+
+CREATE OR REPLACE FUNCTION preveri_razpoložljivost()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM rezervacije 
+        WHERE sd_id = NEW.sd_id AND datum_rezervacije = NEW.datum_rezervacije
+    ) THEN
+        RAISE EXCEPTION 'Napaka: Dvorana je na ta dan že rezervirana!';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_preveri_razpolozljivost
+BEFORE INSERT ON rezervacije
+FOR EACH ROW EXECUTE FUNCTION preveri_razpoložljivost();
